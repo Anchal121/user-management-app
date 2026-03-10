@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Home() {
 
@@ -8,8 +10,8 @@ export default function Home() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  // Fetch Users
   const fetchUsers = async () => {
     const res = await fetch("/api/users");
     const data = await res.json();
@@ -20,31 +22,46 @@ export default function Home() {
     fetchUsers();
   }, []);
 
-  // Add or Update User
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const addUser = async (e: any) => {
     e.preventDefault();
+    setError("");
+
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError("Invalid email format");
+      return;
+    }
 
     if (editId) {
       await fetch("/api/users", {
         method: "PUT",
-        body: JSON.stringify({
-          id: editId,
-          name,
-          email,
-        }),
+        body: JSON.stringify({ id: editId, name, email }),
       });
 
+      toast.success("User updated successfully");
       setEditId(null);
 
     } else {
 
       await fetch("/api/users", {
         method: "POST",
-        body: JSON.stringify({
-          name,
-          email,
-        }),
+        body: JSON.stringify({ name, email }),
       });
+
+      toast.success("User added successfully");
     }
 
     setName("");
@@ -53,17 +70,17 @@ export default function Home() {
     fetchUsers();
   };
 
-  // Delete User
   const deleteUser = async (id: string) => {
     await fetch("/api/users", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
 
+    toast.success("User deleted successfully");
+
     fetchUsers();
   };
 
-  // Edit User
   const editUser = (user: any) => {
     setName(user.name);
     setEmail(user.email);
@@ -71,9 +88,11 @@ export default function Home() {
   };
 
   return (
-    <div style={{ padding: "40px", fontFamily: "Arial" }}>
+    <div style={{ padding: "30px", fontFamily: "Arial" }}>
 
-      <h1 style={{ fontSize: "32px", marginBottom: "20px" }}>
+      <ToastContainer />
+
+      <h1 style={{ marginBottom: "20px" }}>
         User Management Dashboard
       </h1>
 
@@ -83,8 +102,9 @@ export default function Home() {
         onSubmit={addUser}
         style={{
           display: "flex",
-          gap: "15px",
-          marginBottom: "25px",
+          flexWrap: "wrap",
+          gap: "10px",
+          marginBottom: "20px",
         }}
       >
 
@@ -94,7 +114,8 @@ export default function Home() {
           onChange={(e) => setName(e.target.value)}
           style={{
             padding: "10px",
-            width: "250px",
+            flex: "1",
+            minWidth: "200px",
             borderRadius: "5px",
             border: "1px solid #ccc",
           }}
@@ -106,7 +127,8 @@ export default function Home() {
           onChange={(e) => setEmail(e.target.value)}
           style={{
             padding: "10px",
-            width: "250px",
+            flex: "1",
+            minWidth: "200px",
             borderRadius: "5px",
             border: "1px solid #ccc",
           }}
@@ -117,7 +139,7 @@ export default function Home() {
           style={{
             background: "#2563eb",
             color: "white",
-            padding: "10px 18px",
+            padding: "10px 20px",
             borderRadius: "5px",
             border: "none",
             cursor: "pointer",
@@ -128,77 +150,81 @@ export default function Home() {
 
       </form>
 
+      {error && (
+        <p style={{ color: "red", marginBottom: "15px" }}>
+          {error}
+        </p>
+      )}
+
       {/* Table */}
 
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          background: "#f9fafb",
-        }}
-      >
+      <div style={{ overflowX: "auto" }}>
 
-        <thead>
-          <tr style={{ textAlign: "left", borderBottom: "2px solid #ddd" }}>
-            <th style={{ padding: "12px" }}>Name</th>
-            <th style={{ padding: "12px" }}>Email</th>
-            <th style={{ padding: "12px" }}>Actions</th>
-          </tr>
-        </thead>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+          }}
+        >
 
-        <tbody>
-
-          {users.map((user) => (
-
-            <tr key={user._id} style={{ borderBottom: "1px solid #ddd" }}>
-
-              <td style={{ padding: "12px" }}>
-                {user.name}
-              </td>
-
-              <td style={{ padding: "12px" }}>
-                {user.email}
-              </td>
-
-              <td style={{ padding: "12px" }}>
-
-                <button
-                  onClick={() => editUser(user)}
-                  style={{
-                    background: "#facc15",
-                    padding: "6px 12px",
-                    border: "none",
-                    marginRight: "8px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Edit
-                </button>
-
-                <button
-                  onClick={() => deleteUser(user._id)}
-                  style={{
-                    background: "#ef4444",
-                    color: "white",
-                    padding: "6px 12px",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Delete
-                </button>
-
-              </td>
-
+          <thead>
+            <tr style={{ borderBottom: "2px solid #ddd" }}>
+              <th style={{ padding: "10px" }}>Name</th>
+              <th style={{ padding: "10px" }}>Email</th>
+              <th style={{ padding: "10px" }}>Actions</th>
             </tr>
+          </thead>
 
-          ))}
+          <tbody>
 
-        </tbody>
+            {users.map((user) => (
 
-      </table>
+              <tr key={user._id} style={{ borderBottom: "1px solid #eee" }}>
+
+                <td style={{ padding: "10px" }}>{user.name}</td>
+                <td style={{ padding: "10px" }}>{user.email}</td>
+
+                <td style={{ padding: "10px" }}>
+
+                  <button
+                    onClick={() => editUser(user)}
+                    style={{
+                      background: "#facc15",
+                      padding: "6px 12px",
+                      border: "none",
+                      marginRight: "8px",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => deleteUser(user._id)}
+                    style={{
+                      background: "#ef4444",
+                      color: "white",
+                      padding: "6px 12px",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Delete
+                  </button>
+
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
 
     </div>
   );
