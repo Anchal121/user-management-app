@@ -1,191 +1,215 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type User = {
-  _id: string;
-  name: string;
-  email: string;
-};
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Home() {
 
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [editId, setEditId] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   const fetchUsers = async () => {
-    try {
-
-      const res = await fetch("/api/users");
-
-      if (!res.ok) {
-        console.error("API error:", res.status);
-        setLoading(false);
-        return;
-      }
-
-      const data = await res.json();
-
-      setUsers(data);
-
-    } catch (error) {
-      console.error("Fetch error:", error);
-    }
-
-    setLoading(false);
+    const res = await fetch("/api/users");
+    const data = await res.json();
+    setUsers(data);
   };
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  const addUser = async () => {
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
 
-    if (!name || !email) return;
+  const addUser = async (e: any) => {
+    e.preventDefault();
+    setError("");
 
-    try {
-
-      if (editId) {
-
-        await fetch("/api/users/update", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: editId, name, email }),
-        });
-
-        setEditId("");
-
-      } else {
-
-        await fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email }),
-        });
-
-      }
-
-      setName("");
-      setEmail("");
-
-      fetchUsers();
-
-    } catch (error) {
-      console.error("Add user error:", error);
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
     }
+
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError("Invalid email format");
+      return;
+    }
+
+    if (editId) {
+      await fetch("/api/users", {
+        method: "PUT",
+        body: JSON.stringify({ id: editId, name, email }),
+      });
+
+      toast.success("User updated successfully");
+      setEditId(null);
+
+    } else {
+
+      await fetch("/api/users", {
+        method: "POST",
+        body: JSON.stringify({ name, email }),
+      });
+
+      toast.success("User added successfully");
+    }
+
+    setName("");
+    setEmail("");
+
+    fetchUsers();
   };
 
   const deleteUser = async (id: string) => {
+    await fetch("/api/users", {
+      method: "DELETE",
+      body: JSON.stringify({ id }),
+    });
 
-    try {
+    toast.success("User deleted successfully");
 
-      await fetch("/api/users", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-
-      fetchUsers();
-
-    } catch (error) {
-      console.error("Delete error:", error);
-    }
+    fetchUsers();
   };
 
-  const editUser = (user: User) => {
+  const editUser = (user: any) => {
     setName(user.name);
     setEmail(user.email);
     setEditId(user._id);
   };
 
   return (
+    <div style={{ padding: "30px", fontFamily: "Arial" }}>
 
-    <div className="min-h-screen bg-gray-100 p-10">
+      <ToastContainer />
 
-      <h1 className="text-4xl font-bold text-gray-800 mb-8">
+      <h1 style={{ marginBottom: "20px" }}>
         User Management Dashboard
       </h1>
 
       {/* Form */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8 flex gap-4">
+
+      <form
+        onSubmit={addUser}
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px",
+          marginBottom: "20px",
+        }}
+      >
 
         <input
-          className="border border-gray-300 p-3 rounded w-1/3 focus:ring-2 focus:ring-blue-500"
           placeholder="Enter Name"
           value={name}
-          onChange={(e)=>setName(e.target.value)}
+          onChange={(e) => setName(e.target.value)}
+          style={{
+            padding: "10px",
+            flex: "1",
+            minWidth: "200px",
+            borderRadius: "5px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <input
-          className="border border-gray-300 p-3 rounded w-1/3 focus:ring-2 focus:ring-blue-500"
           placeholder="Enter Email"
           value={email}
-          onChange={(e)=>setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{
+            padding: "10px",
+            flex: "1",
+            minWidth: "200px",
+            borderRadius: "5px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <button
-          onClick={addUser}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded"
+          type="submit"
+          style={{
+            background: "#2563eb",
+            color: "white",
+            padding: "10px 20px",
+            borderRadius: "5px",
+            border: "none",
+            cursor: "pointer",
+          }}
         >
           {editId ? "Update User" : "Add User"}
         </button>
 
-      </div>
+      </form>
+
+      {error && (
+        <p style={{ color: "red", marginBottom: "15px" }}>
+          {error}
+        </p>
+      )}
 
       {/* Table */}
 
-      <div className="bg-white rounded-lg shadow">
+      <div style={{ overflowX: "auto" }}>
 
-        <table className="w-full">
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+          }}
+        >
 
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="p-4 text-left">Name</th>
-              <th className="p-4 text-left">Email</th>
-              <th className="p-4 text-center">Actions</th>
+          <thead>
+            <tr style={{ borderBottom: "2px solid #ddd" }}>
+              <th style={{ padding: "10px" }}>Name</th>
+              <th style={{ padding: "10px" }}>Email</th>
+              <th style={{ padding: "10px" }}>Actions</th>
             </tr>
           </thead>
 
           <tbody>
 
-            {loading && (
-              <tr>
-                <td colSpan={3} className="text-center p-6">
-                  Loading users...
-                </td>
-              </tr>
-            )}
+            {users.map((user) => (
 
-            {!loading && users.length === 0 && (
-              <tr>
-                <td colSpan={3} className="text-center p-6 text-gray-500">
-                  No users found
-                </td>
-              </tr>
-            )}
+              <tr key={user._id} style={{ borderBottom: "1px solid #eee" }}>
 
-            {users.map((u)=>(
-              <tr key={u._id} className="border-t hover:bg-gray-50">
+                <td style={{ padding: "10px" }}>{user.name}</td>
+                <td style={{ padding: "10px" }}>{user.email}</td>
 
-                <td className="p-4">{u.name}</td>
-
-                <td className="p-4">{u.email}</td>
-
-                <td className="p-4 flex justify-center gap-3">
+                <td style={{ padding: "10px" }}>
 
                   <button
-                    onClick={()=>editUser(u)}
-                    className="bg-yellow-400 hover:bg-yellow-500 px-4 py-1 rounded"
+                    onClick={() => editUser(user)}
+                    style={{
+                      background: "#facc15",
+                      padding: "6px 12px",
+                      border: "none",
+                      marginRight: "8px",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
                   >
                     Edit
                   </button>
 
                   <button
-                    onClick={()=>deleteUser(u._id)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded"
+                    onClick={() => deleteUser(user._id)}
+                    style={{
+                      background: "#ef4444",
+                      color: "white",
+                      padding: "6px 12px",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
                   >
                     Delete
                   </button>
@@ -193,6 +217,7 @@ export default function Home() {
                 </td>
 
               </tr>
+
             ))}
 
           </tbody>
